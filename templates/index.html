@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Study Notes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --accent: #fd79a8;
+      --dark: #2d3436;
+      --light: #f5f6fa;
+      --glass: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; color: var(--light); }
+    body {
+      background: linear-gradient(135deg, var(--dark) 0%, #1e272e 100%);
+      overflow-x: hidden;
+    }
+
+    /* Background blobs */
+    .bg-blob { position: fixed; inset: 0; z-index: -1; filter: blur(80px); opacity: 0.4; pointer-events: none; }
+    .blob { position: absolute; border-radius: 50%; mix-blend-mode: screen; animation: drift 50s infinite alternate ease-in-out; }
+    .blob.one { width: 500px; height: 500px; top: -150px; left: -150px; background: var(--primary); }
+    .blob.two { width: 400px; height: 400px; bottom: -120px; right: -120px; background: var(--accent); }
+    @keyframes drift { to { transform: translate(60px, -40px) scale(1.05);} }
+
+    /* Header */
+    .header { padding: 20px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .logo { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(45deg, var(--primary), var(--accent)); border-radius: 12px; color: white; font-size: 18px; box-shadow: 0 0 20px rgba(108, 92, 231, 0.5); }
+    .title { font-weight: 800; font-size: clamp(22px, 2.6vw, 32px); color: var(--light); }
+
+    /* Floating Add Button */
+    .fab {
+      position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; cursor: pointer; box-shadow: 0 0 20px rgba(108, 92, 231, 0.4);
+      transition: transform .2s ease;
+    }
+    .fab:hover { transform: scale(1.08); }
+
+    /* Notes Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill,minmax(260px,1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 18px 60px;
+    }
+    .note {
+      border-radius: 16px;
+      padding: 16px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 180px;
+      cursor: pointer;
+    }
+    .note:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 0 25px rgba(108, 92, 231, 0.4); }
+    .note:focus,
+    .note:focus-visible { outline: none; box-shadow: none; }
+    .note h3 { margin-bottom: 8px; font-size: 16.5px; font-weight: 700; color: var(--secondary); }
+    .note p { margin: 0; color: var(--light); opacity: 0.85; white-space: pre-wrap; }
+    .note img { margin-top: 10px; border-radius: 8px; max-width: 100%; }
+    .note a.file-link { margin-top: 10px; color: var(--secondary); text-decoration: none; display: inline-block; }
+    .note .note-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+    .icon-btn { color: var(--primary); font-size: 16px; padding: 6px; border-radius: 10px; transition: background .2s, transform .15s; cursor: pointer; }
+    .icon-btn:hover { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
+    .icon-delete { color: var(--accent); }
+    .icon-delete:hover { background: rgba(253, 121, 168, 0.15); }
+
+    /* Empty State */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Modal */
+    .modal { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,0.45); z-index: 50; padding: 16px; }
+    .modal-content {
+      width: min(560px, 94vw);
+      background: var(--glass);
+      border-radius: 16px;
+      padding: 22px;
+      backdrop-filter: blur(14px) saturate(1.2);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 0 30px rgba(108, 92, 231, 0.3);
+      transform: translateY(40px);
+      opacity: 0;
+    }
+    .modal .title { font-size: 18px; color: var(--secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .modal-content .row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      font-size: 15px;
+      background: rgba(255,255,255,0.1);
+      color: var(--light);
+      outline: none;
+    }
+    .modal-content input:focus,
+    .modal-content textarea:focus { border-color: var(--primary); }
+    .modal-content input[type="file"] {
+      padding: 6px;
+      background: transparent;
+      cursor: pointer;
+      color: var(--light);
+    }
+    .actions { display: flex; justify-content: flex-end; gap: 12px; }
+    .btn { padding: 8px 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: linear-gradient(45deg, var(--primary), var(--accent)); color: #fff; }
+    .btn:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <!-- Background blobs -->
+  <div class="bg-blob">
+    <div class="blob one"></div>
+    <div class="blob two"></div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><i class="fa-solid fa-book-open"></i></div>
+    <div class="title">Study Notes</div>
+  </div>
+
+  <!-- Floating Add Button -->
+  <div class="fab" onclick="openModal('addModal')"><i class="fa-solid fa-plus"></i></div>
+
+  <!-- Notes Grid -->
+  <div class="grid">
+    {% for note in notes %}
+      <div class="note" 
+           data-id="{{ note.id }}" 
+           data-title="{{ note.title|e }}" 
+           data-content="{{ note.content|e }}" 
+           data-attachment="{{ note.attachment if note.attachment else '' }}">
+        <h3>{{ note.title }}</h3>
+        <p>{{ note.content }}</p>
+
+        {% if note.attachment %}
+          {% if note.attachment.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+            <img src="{{ url_for('static', filename='uploads/' + note.attachment) }}" alt="Note Image">
+          {% else %}
+            <a href="{{ url_for('static', filename='uploads/' + note.attachment) }}" target="_blank" class="file-link">
+              <i class="fa-solid fa-file"></i> Download File
+            </a>
+          {% endif %}
+        {% endif %}
+
+        <div class="note-actions">
+          <span class="icon-btn" onclick="openEdit(this.closest('.note'))">
+            <i class="fa-solid fa-pen"></i>
+          </span>
+          <a class="icon-btn icon-delete" href="{{ url_for('delete_note', id=note.id) }}">
+            <i class="fa-solid fa-trash"></i>
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fa-regular fa-lightbulb" style="font-size:50px;opacity:0.4;"></i>
+        <p>No notes yet! Click the + to add one and start organizing your study notes ✨</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Add Modal -->
+  <div id="addModal" class="modal">
+    <div class="modal-content">
+      <div class="title"><i class="fa-solid fa-plus"></i> Add Note</div>
+      <form action="/add" method="POST" enctype="multipart/form-data">
+        <div class="row">
+          <input name="title" placeholder="Note title…" required/>
+          <textarea name="content" rows="4" placeholder="Write your note…" required></textarea>
+          <input type="file" name="attachment" accept="image/*,.pdf,.doc,.docx,.txt" />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" onclick="closeModal('addModal')">Cancel</button>
+          <button class="btn btn-primary" type="submit">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="title"><i class="fa-solid fa-pen-to-square"></i> Edit Note</div>
+      <form id="editForm" method="POST" enctype="multipart/form-data">
+        <div class="row">
+          <input id="editTitle" name="title" required/>
+          <textarea id="editContent" name="content" rows="4" required></textarea>
+          <input type="file" name="attachment" accept="image/*,.pdf,.doc,.docx,.txt" />
+          <div id="editAttachmentPreview"></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" onclick="closeModal('editModal')">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openModal(id){
+      const modal = document.getElementById(id);
+      modal.style.display='grid';
+      gsap.fromTo(modal.querySelector(".modal-content"),
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+      );
+    }
+
+    function openEdit(noteElement){
+      const id = noteElement.dataset.id;
+      const attachment = noteElement.dataset.attachment;
+
+      document.getElementById('editTitle').value = noteElement.dataset.title || '';
+      document.getElementById('editContent').value = noteElement.dataset.content || '';
+      document.getElementById('editForm').action = `/edit/${id}`;
+
+      const previewContainer = document.getElementById('editAttachmentPreview');
+      previewContainer.innerHTML = '';
+
+      if (attachment) {
+        if (attachment.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          previewContainer.innerHTML = `<img src="/static/uploads/${attachment}" style="max-width:100%;border-radius:8px;margin-top:10px;">`;
+        } else {
+          previewContainer.innerHTML = `<a href="/static/uploads/${attachment}" target="_blank" style="color:var(--secondary);display:inline-block;margin-top:10px;"><i class="fa-solid fa-file"></i> Download Current File</a>`;
+        }
+      }
+
+      openModal('editModal');
+    }
+
+    function closeModal(id){ document.getElementById(id).style.display='none'; }
+
+    document.querySelectorAll('.modal').forEach(m => {
+      m.addEventListener('click', e => { if(e.target === m) closeModal(m.id); });
+    });
+
+    // Make entire card clickable (except buttons)
+    document.querySelectorAll('.note').forEach(note => {
+      note.addEventListener('click', function(e) {
+        if (!e.target.closest('.icon-btn')) {
+          openEdit(note);
+        }
+      });
+    });
+
+    // GSAP animations for notes without tilt effect
+    gsap.fromTo(".note",
+      { opacity: 0 },
+      {
+        scrollTrigger: { trigger: ".grid", start: "top 90%" },
+        opacity: 1,
+        duration: 0.6,
+        stagger: 0.15,
+        ease: "power2.out"
+      }
+    );
+  </script>
+</body>
+</html>

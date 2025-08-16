@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat: {{ group_name|default('Unknown Group') }} - AI Study Partner</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --accent: #fd79a8;
+      --dark: #2d3436;
+      --light: #f5f6fa;
+      --glass: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; color: var(--light); }
+    body {
+      background: linear-gradient(135deg, var(--dark) 0%, #1e272e 100%);
+      overflow-x: hidden;
+    }
+    .bg-blob { position: fixed; inset: 0; z-index: -1; filter: blur(80px); opacity: 0.4; pointer-events: none; }
+    .blob { position: absolute; border-radius: 50%; mix-blend-mode: screen; animation: drift 50s infinite alternate ease-in-out; }
+    .blob.one { width: 500px; height: 500px; top: -150px; left: -150px; background: var(--primary); }
+    .blob.two { width: 400px; height: 400px; bottom: -120px; right: -120px; background: var(--accent); }
+    @keyframes drift { to { transform: translate(60px, -40px) scale(1.05); } }
+    .container { max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+      transition: transform 0.2s ease;
+    }
+    .card:hover { transform: translateY(-4px); }
+    h1 { color: var(--secondary); margin-bottom: 20px; font-weight: 800; }
+    #messages { height: 400px; overflow-y: auto; margin-bottom: 20px; }
+    .message { margin-bottom: 10px; color: var(--light); opacity: 0.85; }
+    .error { color: var(--accent); margin-bottom: 15px; }
+    .success { color: #00cc00; margin-bottom: 15px; }
+    a { color: var(--secondary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    input { width: 70%; padding: 10px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.1); color: var(--light); outline: none; }
+    input:focus { border-color: var(--primary); }
+    button { padding: 10px; background: linear-gradient(45deg, var(--primary), var(--accent)); color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    button:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="bg-blob">
+    <div class="blob one"></div>
+    <div class="blob two"></div>
+  </div>
+  <div class="container">
+    <h1>Chat: {{ group_name|default('Unknown Group') }}</h1>
+    <div class="card">
+      <div id="messages">
+        {% for message in messages %}
+          <p class="message"><strong>{{ message[1] }} ({{ message[0].timestamp }}):</strong> {{ message[0].content }}</p>
+        {% endfor %}
+      </div>
+      <div>
+        <input id="message" type="text" placeholder="Type message...">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+      <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </div>
+  </div>
+  <script>
+    // Debug: Log the raw value before parsing
+    const groupIdRaw = "{{ group_id|tojson|default('null')|safe }}";
+    console.log('Raw group_id value:', groupIdRaw);
+
+    // Parse group_id as done previously
+    let groupId;
+    try {
+      groupId = JSON.parse(groupIdRaw);
+      if (typeof groupId !== 'number' || isNaN(groupId)) {
+        groupId = parseInt(groupId) || null;
+      }
+    } catch (e) {
+      console.error('Failed to parse group_id:', e, 'Raw value:', groupIdRaw);
+      groupId = null; // Fallback to null if parsing fails
+    }
+
+    if (groupId === null || groupId <= 0) {
+      console.error('group_id is not defined or invalid:', groupId);
+    } else {
+      console.log('Successfully loaded group_id:', groupId);
+
+      // Initialize SocketIO with CORS configuration
+      const socket = io.connect('http://' + document.domain + ':' + location.port, {
+        transports: ['websocket', 'polling'],
+        cors: {
+          origin: 'http://' + document.domain + ':' + location.port,
+          methods: ['GET', 'POST']
+        }
+      });
+
+      socket.on('connect', () => {
+        console.log('Connected to SocketIO');
+        socket.emit('join', { group_id: groupId }); // Explicit property assignment
+      });
+
+      socket.on('message', (data) => {
+        const msgDiv = document.getElementById('messages');
+        msgDiv.innerHTML += '<p class="message"><strong>' + data.username + ':</strong> ' + data.message + '</p>';
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+        console.log('Received message:', data);
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Disconnected from SocketIO');
+      });
+
+      function sendMessage() {
+        const msg = document.getElementById('message').value.trim();
+        if (groupId && msg) {
+          console.log('Sending message:', msg, 'for group_id:', groupId);
+          socket.emit('send_message', { group_id: groupId, message: msg }); // Explicit property assignment
+          document.getElementById('message').value = '';
+          console.log('Message sent');
+        } else if (!msg) {
+          console.log('Message is empty, not sending');
+        } else {
+          console.error('Cannot send message: group_id is invalid or missing');
+        }
+      }
+    }
+
+    // GSAP animation
+    gsap.from(".card", { opacity: 0, y: 40, duration: 0.6, ease: "power2.out" });
+  </script>
+</body>
+</html>

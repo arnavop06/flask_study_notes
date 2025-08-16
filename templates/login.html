@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AI Study Partner</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --accent: #fd79a8;
+      --dark: #2d3436;
+      --light: #f5f6fa;
+      --glass: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; color: var(--light); }
+    body {
+      background: linear-gradient(135deg, var(--dark) 0%, #1e272e 100%);
+      overflow-x: hidden;
+    }
+    .bg-blob { position: fixed; inset: 0; z-index: -1; filter: blur(80px); opacity: 0.4; pointer-events: none; }
+    .blob { position: absolute; border-radius: 50%; mix-blend-mode: screen; animation: drift 50s infinite alternate ease-in-out; }
+    .blob.one { width: 500px; height: 500px; top: -150px; left: -150px; background: var(--primary); }
+    .blob.two { width: 400px; height: 400px; bottom: -120px; right: -120px; background: var(--accent); }
+    @keyframes drift { to { transform: translate(60px, -40px) scale(1.05); } }
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      max-width: 400px;
+      margin: 50px auto;
+      transition: transform 0.2s ease;
+    }
+    .card:hover { transform: translateY(-4px); }
+    h1 { text-align: center; color: var(--secondary); margin-bottom: 40px; font-weight: 800; }
+    .error { color: var(--accent); text-align: center; margin-bottom: 15px; }
+    .success { color: #00cc00; text-align: center; margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; color: var(--light); opacity: 0.85; }
+    input { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.1); color: var(--light); outline: none; }
+    input:focus { border-color: var(--primary); }
+    button { width: 50%; margin-left:85px; padding: 10px; margin-top: 25px; background: linear-gradient(45deg, var(--primary), var(--accent)); color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    button:hover { opacity: 0.9; }
+    p { text-align: center; color: var(--light); opacity: 0.6; margin-top: 15px; }
+    a { color: var(--secondary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="bg-blob">
+    <div class="blob one"></div>
+    <div class="blob two"></div>
+  </div>
+  <div class="card">
+    <h1>Login</h1>
+    {% for message in get_flashed_messages(with_categories=true) %}
+      <p class="{{ 'error' if message[0] == 'error' else 'success' }}">{{ message[1] }}</p>
+    {% endfor %}
+    <form method="post">
+      <label for="username">Username</label>
+      <input type="text" name="username" id="username" required>
+      <label for="password">Password</label>
+      <input type="password" name="password" id="password" required>
+      <button type="submit">Login</button>
+    </form>
+    <p>Need an account? <a href="/signup">Sign up</a></p>
+  </div>
+  <script>
+    gsap.from(".card", { opacity: 0, y: 40, duration: 0.6, ease: "power2.out" });
+  </script>
+</body>
+</html>
