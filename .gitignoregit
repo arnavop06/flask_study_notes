@@ -1,0 +1,1 @@
+"instance/"  rm -r --cached __pycache__
