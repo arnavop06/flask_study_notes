@@ -100,6 +100,10 @@ def init_db():
     except Exception as e:
         print("Error creating/upgrading database:", e)
 
+# Initialize database at startup
+with app.app_context():
+    init_db()
+
 # --- Routes ---
 
 # Root route redirects to /code
@@ -368,8 +372,5 @@ def delete_note(id):
     return redirect(url_for('notes_index'))  # Updated to notes_index
 
 # --- Run ---
-# Update the run block
 if __name__ == '__main__':
-    with app.app_context():
-        init_db()
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
